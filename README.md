@@ -74,19 +74,19 @@ push 後、GitHub Actions が自動で以下を実行します:
 ### 1. 基本: 1コマンドで分析（推奨）
 
 ```bash
-./scripts/inbox.sh ~/Downloads/IRIS提案書.pptx
+python scripts/inbox.py ~/Downloads/IRIS提案書.pptx
 ```
 
 これだけで以下が自動実行されます:
 1. ファイルを `00_inbox/` にコピー
-2. テキスト抽出 → Claude 分析
+2. テキスト抽出 → Claude Opus 分析
 3. 正しいフォルダーへ移動 + ナレッジ更新
 4. commit & push
 
 ### 2. 複数ファイルを一括分析
 
 ```bash
-./scripts/inbox.sh ~/Downloads/提案書.pptx ~/Downloads/見積書.xlsx
+python scripts/inbox.py ~/Downloads/提案書.pptx ~/Downloads/見積書.xlsx
 ```
 
 ### 3. 高速分析（Sonnet モデル）
@@ -94,21 +94,21 @@ push 後、GitHub Actions が自動で以下を実行します:
 軽い資料で速度優先の場合:
 
 ```bash
-./scripts/inbox.sh --model sonnet 軽い資料.pptx
+python scripts/inbox.py --model sonnet 軽い資料.pptx
 ```
 
 ### 4. ドライラン（分類だけ確認、ファイル移動なし）
 
 ```bash
-./scripts/inbox.sh --dry-run ファイル.pptx
+python scripts/inbox.py --dry-run ファイル.pptx
 ```
 
 ### 5. inbox に既にあるファイルを分析
 
 ```bash
-./scripts/analyze-local.sh              # フル分析
-./scripts/analyze-local.sh --dry-run    # 分類のみ
-./scripts/analyze-local.sh --model opus # Opus で分析
+python scripts/analyze-local.py              # フル分析（Opus）
+python scripts/analyze-local.py --dry-run    # 分類のみ
+python scripts/analyze-local.py --model sonnet  # Sonnet で高速分析
 ```
 
 ---

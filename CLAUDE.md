@@ -211,25 +211,25 @@ Claude MAX（OAuth 認証）を使用するため、分析はローカル環境�
 ### フロー
 
 ```
-方法1: inbox.sh で一括実行（推奨）
-  ./scripts/inbox.sh ファイル.pptx
+方法1: inbox.py で一括実行（推奨）
+  python scripts/inbox.py ファイル.pptx
     ↓ ファイルを 00_inbox/ にコピー
     ↓ テキスト抽出（extract_text.py）
-    ↓ Claude 分析（分類 → git mv → ナレッジ更新）
+    ↓ Claude Opus 分析（分類 → git mv → ナレッジ更新）
     ↓ auto-commit & push
 
 方法2: 手動で段階実行
-  cp ファイル.pptx 00_inbox/
-  ./scripts/analyze-local.sh            # フル分析
-  ./scripts/analyze-local.sh --dry-run  # 分類のみ確認
+  ファイルを 00_inbox/ に手動コピー
+  python scripts/analyze-local.py              # フル分析
+  python scripts/analyze-local.py --dry-run    # 分類のみ確認
 ```
 
 ### スクリプト一覧
 
 | スクリプト | 用途 |
 |---|---|
-| `scripts/inbox.sh` | ファイル追加 → 分析 → commit → push を1コマンドで実行 |
-| `scripts/analyze-local.sh` | 00_inbox/ 内のファイルを分析（フル / ドライラン） |
+| `scripts/inbox.py` | ファイル追加 → 分析 → commit → push を1コマンドで実行 |
+| `scripts/analyze-local.py` | 00_inbox/ 内のファイルを分析（フル / ドライラン） |
 | `scripts/extract_text.py` | pptx/xlsx/pdf からテキスト抽出 → JSON |
 
 ### オプション
@@ -238,7 +238,7 @@ Claude MAX（OAuth 認証）を使用するため、分析はローカル環境�
 |---|---|
 | `--dry-run` | 分類のみ確認（ファイル移動・ナレッジ更新なし） |
 | `--model sonnet` | Sonnet で高速分析 |
-| (デフォルト) | Opus で高品質分析 |
+| (デフォルト) | **Opus** で高品質分析 |
 
 ### GitHub Actions
 
