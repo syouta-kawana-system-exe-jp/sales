@@ -159,11 +159,24 @@ claude "Azure移行の過去提案を参考に、新規提案の構成案を作�
 
 ## セットアップ
 
-### 必要なもの
+### 必要なソフトウェア
 
-- **Claude MAX** サブスクリプション（ローカル環境で OAuth 認証済みであること）
-- **Python 3.13** + python-pptx, openpyxl, PyPDF2
-- **Claude Code CLI** (`npm install -g @anthropic-ai/claude-code`)
+| ソフトウェア | 用途 | インストール |
+|---|---|---|
+| **Python 3.13+** | テキスト抽出・スクリプト実行 | [python.org](https://www.python.org/downloads/) |
+| **python-pptx** | PowerPoint テキスト抽出 | `pip install python-pptx` |
+| **openpyxl** | Excel テキスト抽出 | `pip install openpyxl` |
+| **PyPDF2** | PDF テキスト抽出 | `pip install PyPDF2` |
+| **Node.js 20+** | Claude Code CLI の実行基盤 | [nodejs.org](https://nodejs.org/) |
+| **Claude Code CLI** | AI 分析エンジン | `npm install -g @anthropic-ai/claude-code` |
+| **Git** | バージョン管理・push | [git-scm.com](https://git-scm.com/) |
+| **Claude MAX** | サブスクリプション（OAuth 認証） | [claude.ai](https://claude.ai/) |
+
+### 一括インストール（Python パッケージ）
+
+```bash
+pip install python-pptx openpyxl PyPDF2
+```
 
 ### 対応ファイル形式
 
