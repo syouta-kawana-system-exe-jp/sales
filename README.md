@@ -4,25 +4,27 @@
 
 ## クイックスタート
 
-### ファイルを追加する（自動分析）
+### 1. ファイルを `00_inbox/` にコピーする
 
-```bash
-# 1. ファイルを 00_inbox/ に置く
-cp ~/Downloads/IRIS次期提案書.pptx 00_inbox/
+エクスプローラーで `00_inbox/` フォルダーにファイルをドラッグ&ドロップ。
 
-# 2. push するだけ
-git add 00_inbox/
-git commit -m "add: IRIS次期提案書"
-git push
+### 2. Claude Code で分析を指示する
+
+このフォルダーで Claude Code を起動して:
+
+```
+inbox 分析して
 ```
 
-push 後、GitHub Actions が自動で以下を実行します:
-- ファイル内容を読み取って分類判定
-- 正しいフォルダーへ移動（`git mv`）
-- ナレッジベース（案件カタログ・見積パターン集等）を更新
-- 結果を auto-commit & push
+Claude が自動でテキスト抽出 → 分類 → フォルダー移動 → ナレッジ更新を実行します。
 
-**Actions タブ** で進捗とログを確認できます。
+### スクリプトで実行する場合
+
+```bash
+python scripts/inbox.py ファイル.pptx
+```
+
+1コマンドでコピー → 分析 → commit → push まで完了します。
 
 ---
 
