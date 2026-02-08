@@ -71,47 +71,44 @@ push 後、GitHub Actions が自動で以下を実行します:
 
 ## 使い方
 
-### 1. 基本: push で自動分析（推奨）
+### 1. 基本: 1コマンドで分析（推奨）
 
 ```bash
-cp ファイル.pptx 00_inbox/
-git add 00_inbox/ && git commit -m "add: ファイル名" && git push
+./scripts/inbox.sh ~/Downloads/IRIS提案書.pptx
 ```
 
-デフォルトは **Sonnet**（高速・低コスト）で分析されます。
+これだけで以下が自動実行されます:
+1. ファイルを `00_inbox/` にコピー
+2. テキスト抽出 → Claude 分析
+3. 正しいフォルダーへ移動 + ナレッジ更新
+4. commit & push
 
-### 2. 高品質分析: Actions から手動実行
+### 2. 複数ファイルを一括分析
+
+```bash
+./scripts/inbox.sh ~/Downloads/提案書.pptx ~/Downloads/見積書.xlsx
+```
+
+### 3. 高品質分析（Opus モデル）
 
 精度が重要なファイル（大規模見積書、複雑な提案書）の場合:
 
-1. Actions タブ →「**Analyze Inbox Files**」を選択
-2. 「**Run workflow**」をクリック
-3. モデルを `claude-opus-4-6` に変更
-4. 「**Run workflow**」で実行
-
-### 3. ドライラン: 分類だけ確認（ファイルは移動しない）
-
-ローカルまたは Codespaces で:
-
 ```bash
-# テキスト抽出
-python scripts/extract_text.py
-
-# 分類結果を JSON で確認（ファイル移動なし）
-claude -p "$(cat scripts/prompts/classify-only.txt)
-
-## 抽出済みテキストデータ
-$(cat extracted_texts.json)" --max-turns 1
+./scripts/inbox.sh --model opus 重要な見積書.xlsx
 ```
 
-### 4. ローカルでフル分析
+### 4. ドライラン（分類だけ確認、ファイル移動なし）
 
 ```bash
-python scripts/extract_text.py
-claude -p "$(cat scripts/prompts/analyze-file.txt)
+./scripts/inbox.sh --dry-run ファイル.pptx
+```
 
-## 抽出済みテキストデータ
-$(cat extracted_texts.json)"
+### 5. inbox に既にあるファイルを分析
+
+```bash
+./scripts/analyze-local.sh              # フル分析
+./scripts/analyze-local.sh --dry-run    # 分類のみ
+./scripts/analyze-local.sh --model opus # Opus で分析
 ```
 
 ---
@@ -122,8 +119,8 @@ $(cat extracted_texts.json)"
 
 ### 初回セットアップ
 
-1. [GitHub Settings > Codespaces](https://github.com/settings/codespaces) で `ANTHROPIC_API_KEY` を登録
-2. リポジトリページ → Code → Codespaces → Create codespace on main
+1. リポジトリページ → Code → Codespaces → Create codespace on main
+2. ターミナルで `claude` を起動して OAuth ログイン
 
 詳細は [.devcontainer/README.md](.devcontainer/README.md) を参照。
 
@@ -160,26 +157,13 @@ claude "Azure移行の過去提案を参考に、新規提案の構成案を作�
 
 ---
 
-## コスト目安
+## セットアップ
 
-| シナリオ | モデル | 概算コスト |
-|---|---|---|
-| 小さい pptx（4スライド） | Sonnet | ~$0.02 |
-| 大きい xlsx（13シート） | Sonnet | ~$0.12 |
-| 深い分析 + クロスリファレンス | Opus | ~$1.00 |
-| 5ファイル一括 | Sonnet | ~$0.40 |
+### 必要なもの
 
----
-
-## セットアップ（管理者向け）
-
-### 必要な設定
-
-1. **GitHub Secrets** に `ANTHROPIC_API_KEY` を追加
-   - Settings → Secrets and variables → Actions → New repository secret
-
-2. **Actions の権限** を確認
-   - Settings → Actions → General → Workflow permissions → Read and write permissions
+- **Claude MAX** サブスクリプション（ローカル環境で OAuth 認証済みであること）
+- **Python 3.13** + python-pptx, openpyxl, PyPDF2
+- **Claude Code CLI** (`npm install -g @anthropic-ai/claude-code`)
 
 ### 対応ファイル形式
 
@@ -194,7 +178,12 @@ claude "Azure移行の過去提案を参考に、新規提案の構成案を作�
 
 | 症状 | 対処 |
 |---|---|
-| Actions が起動しない | `00_inbox/` 配下にファイルが push されているか確認。`.gitkeep` のみの変更ではトリガーしない |
-| 分類が間違っている | Actions ログで分類理由を確認。手動で `git mv` して修正後、ナレッジも手動更新 |
-| ファイルが inbox に残っている | 判定不能と判断されたファイル。ローカルの Claude Code で手動分析するか、ファイル名を分かりやすくしてリトライ |
-| API エラー | Secrets の `ANTHROPIC_API_KEY` が有効か確認。API 利用上限に達していないか確認 |
+| `claude` コマンドが認証エラー | `claude` を単体で起動して OAuth 再ログイン |
+| 分類が間違っている | `--dry-run` で分類理由を確認。手動で `git mv` して修正後、ナレッジも手動更新 |
+| ファイルが inbox に残っている | 判定不能と判断されたファイル。Claude と対話モードで手動分析するか、ファイル名を分かりやすくしてリトライ |
+| テキスト抽出エラー | `pip install --force-reinstall python-pptx openpyxl PyPDF2` で再インストール |
+
+### API Key で完全自動化したい場合
+
+Anthropic API Key を取得すれば、push だけで CI 上で自動分析が可能です。
+`.github/workflows/analyze-with-api.yml.example` を参照してください。

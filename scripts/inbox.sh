@@ -1,24 +1,44 @@
 #!/bin/bash
-# inbox.sh — ファイルを 00_inbox/ に追加して push するヘルパースクリプト
+# inbox.sh — ファイル追加 → 分析 → コミット → push を1コマンドで実行
 #
 # 使い方:
-#   ./scripts/inbox.sh ファイル1.pptx [ファイル2.xlsx ファイル3.pdf ...]
-#   ./scripts/inbox.sh ~/Downloads/*.pptx
+#   ./scripts/inbox.sh ファイル1.pptx [ファイル2.xlsx ...]
+#   ./scripts/inbox.sh --dry-run ファイル.pptx       # 分類のみ確認
+#   ./scripts/inbox.sh --model opus ファイル.pptx     # Opus で高品質分析
 
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 INBOX="$REPO_ROOT/00_inbox"
 
-if [ $# -eq 0 ]; then
-  echo "使い方: ./scripts/inbox.sh <ファイル> [ファイル2 ...]"
-  echo "例:     ./scripts/inbox.sh ~/Downloads/IRIS提案書.pptx"
+# オプションパース
+ANALYZE_OPTS=()
+FILES=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run)     ANALYZE_OPTS+=("--dry-run"); shift ;;
+    --model)       ANALYZE_OPTS+=("--model" "$2"); shift 2 ;;
+    *)             FILES+=("$1"); shift ;;
+  esac
+done
+
+if [ ${#FILES[@]} -eq 0 ]; then
+  echo "使い方: ./scripts/inbox.sh [オプション] <ファイル> [ファイル2 ...]"
+  echo ""
+  echo "オプション:"
+  echo "  --dry-run        分類のみ確認（ファイル移動なし）"
+  echo "  --model opus     Opus で高品質分析（デフォルト: Sonnet）"
+  echo ""
+  echo "例:"
+  echo "  ./scripts/inbox.sh ~/Downloads/IRIS提案書.pptx"
+  echo "  ./scripts/inbox.sh --dry-run ~/Downloads/*.pptx"
+  echo "  ./scripts/inbox.sh --model opus 重要な見積書.xlsx"
   exit 1
 fi
 
 # ファイルを 00_inbox/ にコピー
 NAMES=()
-for FILE in "$@"; do
+for FILE in "${FILES[@]}"; do
   if [ ! -f "$FILE" ]; then
     echo "エラー: $FILE が見つかりません" >&2
     exit 1
@@ -29,11 +49,9 @@ for FILE in "$@"; do
   echo "追加: $BASENAME"
 done
 
-# git add, commit, push
 cd "$REPO_ROOT"
 git add 00_inbox/
-git commit -m "add: ${NAMES[*]}"
-git push
 
 echo ""
-echo "完了: ${#NAMES[@]} ファイルを push しました。Actions タブで分析結果を確認してください。"
+echo "=== 分析開始 ==="
+./scripts/analyze-local.sh "${ANALYZE_OPTS[@]}"

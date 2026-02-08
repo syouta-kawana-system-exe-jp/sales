@@ -204,47 +204,46 @@ sales/
 | PIMSDB | プロセス情報 |
 | D&B Direct+ | 企業情報 |
 
-## GitHub Actions 自動分析パイプライン
+## 分析パイプライン
 
-`00_inbox/` にファイルを push すると、GitHub Actions が自動で分類・移動・ナレッジ更新を実行する。
+Claude MAX（OAuth 認証）を使用するため、分析はローカル環境で実行する。
 
 ### フロー
 
 ```
-00_inbox/ にファイル push
-    ↓
-check-inbox job: 新ファイル検出（diff-filter=AM）
-    ↓  has_files == true の場合のみ
-analyze job:
-    1. scripts/extract_text.py で pptx/xlsx/pdf → JSON テキスト抽出
-    2. claude -p で分析実行（CLAUDE.md を自動読み込み）
-       - ファイル内容を精読して分類判定
-       - git mv で正しいフォルダーへ移動
-       - ナレッジ Markdown を更新
-    3. 結果を auto-commit & push
+方法1: inbox.sh で一括実行（推奨）
+  ./scripts/inbox.sh ファイル.pptx
+    ↓ ファイルを 00_inbox/ にコピー
+    ↓ テキスト抽出（extract_text.py）
+    ↓ Claude 分析（分類 → git mv → ナレッジ更新）
+    ↓ auto-commit & push
+
+方法2: 手動で段階実行
+  cp ファイル.pptx 00_inbox/
+  ./scripts/analyze-local.sh            # フル分析
+  ./scripts/analyze-local.sh --dry-run  # 分類のみ確認
 ```
 
-### 設定
+### スクリプト一覧
 
-| 項目 | 値 |
+| スクリプト | 用途 |
 |---|---|
-| ワークフロー | `.github/workflows/analyze-inbox.yml` |
-| トリガー | `push` (path: `00_inbox/**`) + `workflow_dispatch`（手動） |
-| デフォルトモデル | `claude-sonnet-4-5-20250929`（コスト効率） |
-| 手動切替可能モデル | `claude-opus-4-6`（高品質分析時） |
-| 暴走防止 | `--max-turns 30` |
-| 並行実行制御 | `concurrency: analyze-inbox`（キュー順次実行） |
+| `scripts/inbox.sh` | ファイル追加 → 分析 → commit → push を1コマンドで実行 |
+| `scripts/analyze-local.sh` | 00_inbox/ 内のファイルを分析（フル / ドライラン） |
+| `scripts/extract_text.py` | pptx/xlsx/pdf からテキスト抽出 → JSON |
 
-### 無限ループ防止
+### オプション
 
-ワークフローは `00_inbox/**` パスのみトリガー。Claude がファイルを inbox から移動するため、auto-commit で再トリガーしない。
+| オプション | 説明 |
+|---|---|
+| `--dry-run` | 分類のみ確認（ファイル移動・ナレッジ更新なし） |
+| `--model opus` | Opus で高品質分析（デフォルト: Sonnet） |
+| `--model sonnet` | Sonnet で高速・低コスト分析 |
 
-### CI 環境での注意
+### GitHub Actions
 
-- GitHub Secrets に `ANTHROPIC_API_KEY` の設定が必要
-- CI では `--dangerously-skip-permissions` で自動承認
-- CI での出力・コミットメッセージ・ナレッジ更新はすべて日本語で記述すること
-- 判定不能なファイルは `00_inbox/` に残し、コミットメッセージで報告する（CI ではユーザーに確認できないため）
+`00_inbox/**` への push 時に未分析ファイルの検出・通知のみ行う（Claude 分析は行わない）。
+API Key を取得した場合は `.github/workflows/analyze-with-api.yml.example` を参照。
 
 ### テキスト抽出スクリプト (`scripts/extract_text.py`)
 

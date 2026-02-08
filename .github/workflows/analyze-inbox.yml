@@ -1,150 +1,39 @@
-name: Analyze Inbox Files
+name: Inbox File Detection
+
+# Claude MAX 環境のため、CI での Claude 分析は行わない。
+# このワークフローは新ファイルの検出とテキスト抽出のみ実行し、
+# 分析はローカルの ./scripts/inbox.sh で行う。
+#
+# API Key を取得した場合は analyze-with-api.yml.example を参照。
 
 on:
   push:
     paths:
       - '00_inbox/**'
-  workflow_dispatch:
-    inputs:
-      model:
-        description: 'Claude model to use'
-        required: false
-        default: 'claude-sonnet-4-5-20250929'
-        type: choice
-        options:
-          - claude-sonnet-4-5-20250929
-          - claude-opus-4-6
-      max_turns:
-        description: 'Max turns for Claude CLI'
-        required: false
-        default: '30'
-        type: string
 
 permissions:
-  contents: write
-
-concurrency:
-  group: analyze-inbox
-  cancel-in-progress: false
+  contents: read
 
 jobs:
   check-inbox:
     runs-on: ubuntu-latest
-    outputs:
-      has_files: ${{ steps.check.outputs.has_files }}
-      file_list: ${{ steps.check.outputs.file_list }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Check for new files in 00_inbox
-        id: check
+      - name: Detect new files in 00_inbox
         run: |
-          # For push events, compare with previous commit
-          if [ "${{ github.event_name }}" = "push" ]; then
-            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '00_inbox/' | grep -v '.gitkeep' || true)
-          else
-            # For workflow_dispatch, check all files in inbox
-            FILES=$(find 00_inbox/ -type f ! -name '.gitkeep' 2>/dev/null || true)
-          fi
+          FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '00_inbox/' | grep -v '.gitkeep' || true)
 
           if [ -z "$FILES" ]; then
-            echo "has_files=false" >> "$GITHUB_OUTPUT"
-            echo "No new files in 00_inbox/"
+            echo "::notice::00_inbox/ に新規ファイルなし"
           else
-            echo "has_files=true" >> "$GITHUB_OUTPUT"
-            # Store file list as JSON array
-            FILE_JSON=$(echo "$FILES" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-            echo "file_list=$FILE_JSON" >> "$GITHUB_OUTPUT"
-            echo "New files detected:"
+            echo "::warning::未分析ファイルが 00_inbox/ にあります。ローカルで ./scripts/inbox.sh を実行してください。"
+            echo ""
+            echo "検出されたファイル:"
             echo "$FILES"
-          fi
-
-  analyze:
-    needs: check-inbox
-    if: needs.check-inbox.outputs.has_files == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install Python dependencies
-        run: |
-          pip install python-pptx openpyxl PyPDF2
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Claude Code CLI
-        run: |
-          npm install -g @anthropic-ai/claude-code
-
-      - name: Extract text from inbox files
-        run: |
-          python scripts/extract_text.py
-
-      - name: Configure git for auto-commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Determine Claude model
-        id: model
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "model=${{ inputs.model }}" >> "$GITHUB_OUTPUT"
-            echo "max_turns=${{ inputs.max_turns }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "model=claude-sonnet-4-5-20250929" >> "$GITHUB_OUTPUT"
-            echo "max_turns=30" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build prompt with extracted data
-        run: |
-          cp scripts/prompts/analyze-file.txt /tmp/full_prompt.txt
-
-          if [ -f /tmp/extracted_texts.json ]; then
-            {
-              echo ""
-              echo "---"
-              echo "## 抽出済みテキストデータ"
-              echo ""
-              echo '```json'
-              cat /tmp/extracted_texts.json
-              echo '```'
-            } >> /tmp/full_prompt.txt
-          fi
-
-      - name: Run Claude analysis
-        run: |
-          claude -p "$(cat /tmp/full_prompt.txt)" \
-            --model "${{ steps.model.outputs.model }}" \
-            --max-turns "${{ steps.model.outputs.max_turns }}" \
-            --dangerously-skip-permissions
-
-      - name: Auto-commit and push
-        run: |
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "auto: analyze and classify inbox files
-
-          Triggered by: ${{ github.event_name }}
-          Model: ${{ steps.model.outputs.model }}
-          Files: ${{ needs.check-inbox.outputs.file_list }}"
-            git push
+            echo ""
+            echo "分析コマンド:"
+            echo "  ./scripts/analyze-local.sh"
           fi

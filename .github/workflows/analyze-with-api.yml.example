@@ -1,0 +1,149 @@
+# analyze-with-api.yml.example
+#
+# Anthropic API Key を取得した場合に使用するフル自動分析ワークフロー。
+# 使い方:
+#   1. このファイルを analyze-with-api.yml にリネーム
+#   2. GitHub Secrets に ANTHROPIC_API_KEY を設定
+#   3. analyze-inbox.yml を削除（重複防止）
+
+name: Analyze Inbox Files (API)
+
+on:
+  push:
+    paths:
+      - '00_inbox/**'
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Claude model to use'
+        required: false
+        default: 'claude-sonnet-4-5-20250929'
+        type: choice
+        options:
+          - claude-sonnet-4-5-20250929
+          - claude-opus-4-6
+      max_turns:
+        description: 'Max turns for Claude CLI'
+        required: false
+        default: '30'
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: analyze-inbox
+  cancel-in-progress: false
+
+jobs:
+  check-inbox:
+    runs-on: ubuntu-latest
+    outputs:
+      has_files: ${{ steps.check.outputs.has_files }}
+      file_list: ${{ steps.check.outputs.file_list }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for new files in 00_inbox
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '00_inbox/' | grep -v '.gitkeep' || true)
+          else
+            FILES=$(find 00_inbox/ -type f ! -name '.gitkeep' 2>/dev/null || true)
+          fi
+
+          if [ -z "$FILES" ]; then
+            echo "has_files=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_files=true" >> "$GITHUB_OUTPUT"
+            FILE_JSON=$(echo "$FILES" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "file_list=$FILE_JSON" >> "$GITHUB_OUTPUT"
+            echo "New files detected:"
+            echo "$FILES"
+          fi
+
+  analyze:
+    needs: check-inbox
+    if: needs.check-inbox.outputs.has_files == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Python dependencies
+        run: pip install python-pptx openpyxl PyPDF2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Extract text from inbox files
+        run: python scripts/extract_text.py
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine model
+        id: model
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "model=${{ inputs.model }}" >> "$GITHUB_OUTPUT"
+            echo "max_turns=${{ inputs.max_turns }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "model=claude-sonnet-4-5-20250929" >> "$GITHUB_OUTPUT"
+            echo "max_turns=30" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build prompt
+        run: |
+          cp scripts/prompts/analyze-file.txt /tmp/full_prompt.txt
+          if [ -f /tmp/extracted_texts.json ]; then
+            {
+              echo ""
+              echo "---"
+              echo "## 抽出済みテキストデータ"
+              echo ""
+              echo '```json'
+              cat /tmp/extracted_texts.json
+              echo '```'
+            } >> /tmp/full_prompt.txt
+          fi
+
+      - name: Run Claude analysis
+        run: |
+          claude -p "$(cat /tmp/full_prompt.txt)" \
+            --model "${{ steps.model.outputs.model }}" \
+            --max-turns "${{ steps.model.outputs.max_turns }}" \
+            --dangerously-skip-permissions
+
+      - name: Auto-commit and push
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "auto: inbox ファイルを分析・分類
+
+          モデル: ${{ steps.model.outputs.model }}
+          ファイル: ${{ needs.check-inbox.outputs.file_list }}"
+            git push
+          fi
