@@ -24,6 +24,11 @@ CLAUDE.md の仕分けルールに従って判定してください。
 
 以下の形式で出力してください。テキスト内容に基づく分類理由を必ず記載すること。
 
+**顧客判定:**
+- `01_clients/` 配下の既存フォルダーを確認し、該当する顧客を特定する
+- 既存顧客にマッチしない場合、`client` は新規顧客名を記載し、`is_new_client: true` とする
+- 顧客不明の場合、`client: "unknown"` とする
+
 ```json
 {
   "classifications": [
@@ -31,14 +36,25 @@ CLAUDE.md の仕分けルールに従って判定してください。
       "filename": "ファイル名.pptx",
       "category": "proposal",
       "client": "idemitsu",
+      "is_new_client": false,
       "destination": "01_clients/01_idemitsu/01_proposals/",
       "confidence": "high",
       "reason": "スライド内容にIRIS次期開発の提案概要が記載されている"
+    },
+    {
+      "filename": "別のファイル.xlsx",
+      "category": "estimate",
+      "client": "toyota",
+      "is_new_client": true,
+      "destination": "01_clients/02_toyota/02_estimates/",
+      "confidence": "medium",
+      "reason": "見積書シートにトヨタ向け基盤更改の工数が記載されている"
     }
   ],
   "summary": {
-    "total_files": 1,
-    "by_category": {"proposal": 1},
+    "total_files": 2,
+    "by_category": {"proposal": 1, "estimate": 1},
+    "new_clients": ["toyota"],
     "low_confidence_files": []
   }
 }

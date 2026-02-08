@@ -28,14 +28,25 @@ CLAUDE.md に記載された仕分けルールとナレッジ構成に従って�
 **重要:**
 - ファイル名だけでなく、**テキスト内容**から判断すること
 - 「見積もり検証シート」は管理資料（優先度1）
-- 顧客判定: 「出光」またはIRIS/SWAN/HUB/MES等のシステム名 → `01_idemitsu`
+
+**顧客判定:**
+- `01_clients/` 配下の既存フォルダーを `ls` で確認し、該当する顧客フォルダーを特定する
+- 出光興産: 「出光」またはIRIS/SWAN/HUB/MES等のシステム名 → `01_idemitsu`
+- 既存の他顧客: テキスト内容・ファイル名から該当フォルダーを特定
+- 新規顧客: 既存フォルダーの最大連番 +1 で `NN_<顧客名>/` を作成し、配下に `01_proposals/`, `02_estimates/`, `03_management/` を作成
+- 顧客不明（CI環境）: `00_inbox/` に残し、コミットメッセージで報告
 
 ### Step 2: ファイル移動
 
 `git mv` コマンドで 00_inbox/ から正しいフォルダーへ移動してください。
 
 ```bash
+# 既存顧客の例
 git mv "00_inbox/ファイル名.pptx" "01_clients/01_idemitsu/01_proposals/ファイル名.pptx"
+
+# 新規顧客の例
+mkdir -p "01_clients/02_toyota/01_proposals"
+git mv "00_inbox/ファイル名.pptx" "01_clients/02_toyota/01_proposals/ファイル名.pptx"
 ```
 
 移動先フォルダーが存在しない場合は `mkdir -p` で作成してから移動してください。
@@ -45,7 +56,8 @@ git mv "00_inbox/ファイル名.pptx" "01_clients/01_idemitsu/01_proposals/フ�
 移動完了後、以下のナレッジファイルを更新してください。
 
 #### A. 案件カタログ更新
-`02_knowledge/01_proposal_cases/案件カタログ_出光興産.md` に新ファイルの情報を追記。
+顧客別の案件カタログに新ファイルの情報を追記。
+- `02_knowledge/01_proposal_cases/案件カタログ_<顧客名>.md`（なければ新規作成）
 - 既存案件のセクションがあれば、そこにファイルを追加
 - 新規案件であれば新しいセクションを作成
 
@@ -53,7 +65,8 @@ git mv "00_inbox/ファイル名.pptx" "01_clients/01_idemitsu/01_proposals/フ�
 `02_knowledge/06_estimate_patterns/見積パターン集.md` に該当パターンのケースを追加。
 
 #### C. 案件横断サマリー更新
-`02_knowledge/案件横断サマリー_出光興産.md` の該当セクションを更新（必要に応じて）。
+顧客別の案件横断サマリーの該当セクションを更新（必要に応じて）。
+- `02_knowledge/案件横断サマリー_<顧客名>.md`（なければ新規作成）
 
 ### Step 4: クロスリファレンス品質チェック
 
@@ -74,6 +87,7 @@ git mv "00_inbox/ファイル名.pptx" "01_clients/01_idemitsu/01_proposals/フ�
 | ファイル名 | 分類 | 移動先 | 分類理由 |
 |---|---|---|---|
 | example.pptx | 提案書 | 01_clients/01_idemitsu/01_proposals/ | 内容にIRIS次期提案の記載あり |
+| example2.xlsx | 見積書 | 01_clients/02_toyota/02_estimates/ | トヨタ向け基盤更改の見積書（新規顧客フォルダー作成） |
 
 ## ナレッジ更新
 
