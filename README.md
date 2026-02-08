@@ -89,12 +89,12 @@ push 後、GitHub Actions が自動で以下を実行します:
 ./scripts/inbox.sh ~/Downloads/提案書.pptx ~/Downloads/見積書.xlsx
 ```
 
-### 3. 高品質分析（Opus モデル）
+### 3. 高速分析（Sonnet モデル）
 
-精度が重要なファイル（大規模見積書、複雑な提案書）の場合:
+軽い資料で速度優先の場合:
 
 ```bash
-./scripts/inbox.sh --model opus 重要な見積書.xlsx
+./scripts/inbox.sh --model sonnet 軽い資料.pptx
 ```
 
 ### 4. ドライラン（分類だけ確認、ファイル移動なし）

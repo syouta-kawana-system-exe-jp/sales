@@ -237,8 +237,8 @@ Claude MAX（OAuth 認証）を使用するため、分析はローカル環境�
 | オプション | 説明 |
 |---|---|
 | `--dry-run` | 分類のみ確認（ファイル移動・ナレッジ更新なし） |
-| `--model opus` | Opus で高品質分析（デフォルト: Sonnet） |
-| `--model sonnet` | Sonnet で高速・低コスト分析 |
+| `--model sonnet` | Sonnet で高速分析 |
+| (デフォルト) | Opus で高品質分析 |
 
 ### GitHub Actions
 

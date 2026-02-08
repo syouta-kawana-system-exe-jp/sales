@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 # デフォルト設定
-MODEL="claude-sonnet-4-5-20250929"
+MODEL="claude-opus-4-6"
 MAX_TURNS=30
 DRY_RUN=false
 
@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
     --model)
       case "$2" in
         opus)   MODEL="claude-opus-4-6" ;;
-        sonnet) MODEL="claude-sonnet-4-5-20250929" ;;
+        sonnet) MODEL="claude-opus-4-6" ;;
         *)      MODEL="$2" ;;
       esac
       shift 2 ;;

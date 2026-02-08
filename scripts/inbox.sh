@@ -4,7 +4,7 @@
 # 使い方:
 #   ./scripts/inbox.sh ファイル1.pptx [ファイル2.xlsx ...]
 #   ./scripts/inbox.sh --dry-run ファイル.pptx       # 分類のみ確認
-#   ./scripts/inbox.sh --model opus ファイル.pptx     # Opus で高品質分析
+#   ./scripts/inbox.sh --model sonnet ファイル.pptx    # Sonnet で高速分析
 
 set -e
 
@@ -27,12 +27,12 @@ if [ ${#FILES[@]} -eq 0 ]; then
   echo ""
   echo "オプション:"
   echo "  --dry-run        分類のみ確認（ファイル移動なし）"
-  echo "  --model opus     Opus で高品質分析（デフォルト: Sonnet）"
+  echo "  --model sonnet   Sonnet で高速分析（デフォルト: Opus）"
   echo ""
   echo "例:"
   echo "  ./scripts/inbox.sh ~/Downloads/IRIS提案書.pptx"
   echo "  ./scripts/inbox.sh --dry-run ~/Downloads/*.pptx"
-  echo "  ./scripts/inbox.sh --model opus 重要な見積書.xlsx"
+  echo "  ./scripts/inbox.sh --model sonnet 軽い資料.pptx"
   exit 1
 fi
 
