@@ -23,6 +23,16 @@ sales/
 │   ├── 04_introductions/         — 会社紹介・サービス紹介・技術紹介資料
 │   ├── 05_reviews/               — レビューのナレッジ化（振り返り・改善点）
 │   └── 06_estimate_patterns/     — 見積パターン集・類似案件比較
+├── .github/workflows/
+│   └── analyze-inbox.yml         — GitHub Actions 自動分析ワークフロー
+├── .devcontainer/
+│   ├── devcontainer.json         — Codespaces / Dev Container 設定
+│   └── README.md                 — Codespaces セットアップガイド
+├── scripts/
+│   ├── extract_text.py           — pptx/xlsx/pdf テキスト抽出スクリプト
+│   └── prompts/
+│       ├── analyze-file.txt      — フル分析プロンプト（分類+移動+ナレッジ更新）
+│       └── classify-only.txt     — ドライラン用分類専用プロンプト
 └── CLAUDE.md
 ```
 
@@ -165,9 +175,71 @@ sales/
 | PIMSDB | プロセス情報 |
 | D&B Direct+ | 企業情報 |
 
+## GitHub Actions 自動分析パイプライン
+
+`00_inbox/` にファイルを push すると、GitHub Actions が自動で分類・移動・ナレッジ更新を実行する。
+
+### フロー
+
+```
+00_inbox/ にファイル push
+    ↓
+check-inbox job: 新ファイル検出（diff-filter=AM）
+    ↓  has_files == true の場合のみ
+analyze job:
+    1. scripts/extract_text.py で pptx/xlsx/pdf → JSON テキスト抽出
+    2. claude -p で分析実行（CLAUDE.md を自動読み込み）
+       - ファイル内容を精読して分類判定
+       - git mv で正しいフォルダーへ移動
+       - ナレッジ Markdown を更新
+    3. 結果を auto-commit & push
+```
+
+### 設定
+
+| 項目 | 値 |
+|---|---|
+| ワークフロー | `.github/workflows/analyze-inbox.yml` |
+| トリガー | `push` (path: `00_inbox/**`) + `workflow_dispatch`（手動） |
+| デフォルトモデル | `claude-sonnet-4-5-20250929`（コスト効率） |
+| 手動切替可能モデル | `claude-opus-4-6`（高品質分析時） |
+| 暴走防止 | `--max-turns 30` |
+| 並行実行制御 | `concurrency: analyze-inbox`（キュー順次実行） |
+
+### 無限ループ防止
+
+ワークフローは `00_inbox/**` パスのみトリガー。Claude がファイルを inbox から移動するため、auto-commit で再トリガーしない。
+
+### CI 環境での注意
+
+- GitHub Secrets に `ANTHROPIC_API_KEY` の設定が必要
+- CI では `--dangerously-skip-permissions` で自動承認
+- CI での出力・コミットメッセージ・ナレッジ更新はすべて日本語で記述すること
+- 判定不能なファイルは `00_inbox/` に残し、コミットメッセージで報告する（CI ではユーザーに確認できないため）
+
+### テキスト抽出スクリプト (`scripts/extract_text.py`)
+
+| 形式 | ライブラリ | 抽出内容 |
+|---|---|---|
+| .pptx | python-pptx | スライド・テキストフレーム・テーブル |
+| .xlsx / .xlsm | openpyxl | シート・セル（500行上限） |
+| .pdf | PyPDF2 | ページテキスト |
+
+出力: `/tmp/extracted_texts.json`（構造化JSON）
+
+### コスト目安
+
+| シナリオ | モデル | 概算コスト/ファイル |
+|---|---|---|
+| 小さい pptx (4スライド) | Sonnet | ~$0.02 |
+| 大きい xlsx (13シート) | Sonnet | ~$0.12 |
+| 深い分析 + クロスリファレンス | Opus | ~$1.00 |
+
+---
+
 ## 作業時の注意
 
-- すべてのドキュメントは日本語で記述すること
+- すべてのドキュメント・出力・コミットメッセージは日本語で記述すること
 - .pptx/.xlsxファイルはバイナリのため直接編集不可。**ただし、ナレッジMarkdownに全文抽出済み**なので、まずナレッジファイルを参照すること
 - ナレッジベースのMarkdownファイルは大容量（最大1.6MB）のため、読み込み時はoffset/limitパラメータの活用を推奨
 - Python (`python-pptx`, `openpyxl`) のパスは `C:\Users\syouta.kawana\AppData\Local\Programs\Python\Python313\python.exe` を使うこと（WindowsApps版は不可）
